@@ -1,6 +1,6 @@
 'use client'
-import React, { useState } from 'react'
-import { fight, move } from './commands/actions'
+import React, { useEffect, useState } from 'react'
+import { fight, move } from './api/myCharacter'
 import {
     Button,
     FormControl,
@@ -13,20 +13,37 @@ import {
     styled,
     TextField
 } from '@mui/material'
-
-export const characterList = ['AstraeVal']
+import CharacterList from './components/character/characterList'
+import { getAccountCharacters } from './api/accounts'
+import { Character, CharacterResponseData } from './types/accounts'
 
 const CharacterActions: React.FC = () => {
-    const [selectedCharacter, setSelectedCharacter] = useState(characterList[0])
+    const [characterList, setCharacterList] = useState<Character[]>([])
+    const [selectedCharacter, setSelectedCharacter] = useState<number>(0)
     const [x, setX] = useState(0)
     const [y, setY] = useState(0)
 
+    useEffect(() => {
+        getAccountCharacters(process.env.NEXT_PUBLIC_ACCOUNT_NAME || '')
+            .then((characters: CharacterResponseData) => {
+                console.log('Fetched characters:', characters)
+                setCharacterList(characters?.data || [])
+            })
+            .catch(error => {
+                console.error('Failed to fetch characters:', error)
+            })
+    }, [])
+
     const handleMove = () => {
-        move(selectedCharacter, x, y)
+        if (selectedCharacter != null) {
+            move(characterList[selectedCharacter].name, x, y)
+        }
     }
 
     const handleFight = () => {
-        fight(selectedCharacter)
+        if (selectedCharacter != null) {
+            fight(characterList[selectedCharacter].name)
+        }
     }
 
     const Item = styled(Paper)(({ theme }) => ({
@@ -50,67 +67,59 @@ const CharacterActions: React.FC = () => {
     // TODO Add loading
     // TODO Add proper translation
     return (
-        <div className="flex h-screen justify-center items-center">
-            <Grid
-                container
-                rowSpacing={1}
-                sx={{
-                    justifyContent: 'center',
-                    alignItems: 'stretch'
-                }}
-                columnSpacing={{ xs: 1, sm: 2, md: 3 }}
-            >
-                <Grid size={{ xs: 2, sm: 4, md: 4 }}>
-                    <Item>
-                        <FormControl>
-                            <InputLabel id="character-select-label">Select Character:</InputLabel>
-                            <Select
-                                labelId="character-select-label"
-                                id="character-select"
-                                value={selectedCharacter}
-                                label="Select Character:"
-                                onChange={(event: SelectChangeEvent) => {
-                                    setSelectedCharacter(event.target.value as string)
+        <div className="flex h-screen justify-center items-center flex-col space-y-4">
+            <CharacterList
+                selectedCharacter={selectedCharacter}
+                setSelectedCharacter={setSelectedCharacter}
+                characterList={characterList}
+            />
+            {characterList.length > 0 && (
+                <>
+                    <h1 className="text-2xl font-bold mb-4">Character Actions</h1>
+                    <div>
+                        <div className="flex justify-center items-center">
+                            <Grid
+                                container
+                                rowSpacing={1}
+                                sx={{
+                                    justifyContent: 'center',
+                                    alignItems: 'stretch'
                                 }}
+                                columnSpacing={{ xs: 1, sm: 2, md: 3 }}
                             >
-                                {characterList.map(character => (
-                                    <MenuItem key={character} value={character}>
-                                        {character}
-                                    </MenuItem>
-                                ))}
-                            </Select>
-                        </FormControl>
-                    </Item>
-                </Grid>
-                <Grid size={{ xs: 2, sm: 4, md: 4 }}>
-                    <Item className="flex space-x-4">
-                        <div>
-                            <TextField
-                                label="X"
-                                type="number"
-                                margin="none"
-                                value={x}
-                                onChange={e => setX(Number(e.target.value))}
-                            />
+                                <Grid size={{ xs: 2, sm: 4, md: 4 }}>
+                                    <Item className="flex space-x-4">
+                                        <div>
+                                            <TextField
+                                                label="X"
+                                                type="number"
+                                                margin="none"
+                                                value={x}
+                                                onChange={e => setX(Number(e.target.value))}
+                                            />
+                                        </div>
+                                        <div>
+                                            <TextField
+                                                label="Y"
+                                                type="number"
+                                                margin="none"
+                                                value={y}
+                                                onChange={e => setY(Number(e.target.value))}
+                                            />
+                                        </div>
+                                        <Button onClick={handleMove}>Move</Button>
+                                    </Item>
+                                </Grid>
+                                <Grid size={{ xs: 2, sm: 4, md: 4 }}>
+                                    <Item>
+                                        <Button onClick={handleFight}>Fight</Button>
+                                    </Item>
+                                </Grid>
+                            </Grid>
                         </div>
-                        <div>
-                            <TextField
-                                label="Y"
-                                type="number"
-                                margin="none"
-                                value={y}
-                                onChange={e => setY(Number(e.target.value))}
-                            />
-                        </div>
-                        <Button onClick={handleMove}>Move</Button>
-                    </Item>
-                </Grid>
-                <Grid size={{ xs: 2, sm: 4, md: 4 }}>
-                    <Item>
-                        <Button onClick={handleFight}>Fight</Button>
-                    </Item>
-                </Grid>
-            </Grid>
+                    </div>
+                </>
+            )}
         </div>
     )
 }
